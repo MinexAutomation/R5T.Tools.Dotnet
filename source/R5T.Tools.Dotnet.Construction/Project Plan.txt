@@ -1,0 +1,4 @@
+R5T.Tools.Dotnet.Construction - A construction console entry-point for the R5T.Tools.Dotnet library (A library for working with the dotnet tool.).
+
+Goals
+
