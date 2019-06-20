@@ -4,7 +4,8 @@ using R5T.Code.VisualStudio;
 using R5T.Code.VisualStudio.IO;
 using R5T.NetStandard;
 
-using VisualStudioUtilities = R5T.Code.VisualStudio.Utilities;
+using VsUtilities = R5T.Code.VisualStudio.Utilities;
+using VsIoUtilities = R5T.Code.VisualStudio.IO.Utilities;
 
 
 namespace R5T.Tools.Dotnet
@@ -15,7 +16,7 @@ namespace R5T.Tools.Dotnet
         {
             var projectFileNameWithoutExtension = conventions.ProjectFileNameWithoutExtensionFromProjectName(projectName);
 
-            var projectFileName = VisualStudioUtilities.GetCSharpProjectFileName(projectFileNameWithoutExtension);
+            var projectFileName = VsIoUtilities.GetCSharpProjectFileName(projectFileNameWithoutExtension);
             return projectFileName;
         }
 
@@ -32,7 +33,7 @@ namespace R5T.Tools.Dotnet
         {
             var projectFileName = Utilities.GetCSharpProjectFileName(projectName, conventions);
 
-            var projectFilePath = VisualStudioUtilities.GetProjectFilePath(projectDirectoryPath, projectFileName);
+            var projectFilePath = VsIoUtilities.GetProjectFilePath(projectDirectoryPath, projectFileName);
             return projectFilePath;
         }
 
@@ -68,7 +69,7 @@ namespace R5T.Tools.Dotnet
         {
             var solutionFileNameWithoutExtension = conventions.SolutionFileNameWithoutExtensionFromSolutionName(solutionName);
 
-            var solutionFileName = VisualStudioUtilities.GetSolutionFileName(solutionFileNameWithoutExtension);
+            var solutionFileName = VsIoUtilities.GetSolutionFileName(solutionFileNameWithoutExtension);
             return solutionFileName;
         }
 
@@ -85,7 +86,7 @@ namespace R5T.Tools.Dotnet
         {
             var solutionFileName = Utilities.GetSolutionFileName(solutionName, conventions);
 
-            var solutionFilePath = VisualStudioUtilities.GetSolutionFilePath(solutionDirectoryPath, solutionFileName);
+            var solutionFilePath = VsIoUtilities.GetSolutionFilePath(solutionDirectoryPath, solutionFileName);
             return solutionFilePath;
         }
 

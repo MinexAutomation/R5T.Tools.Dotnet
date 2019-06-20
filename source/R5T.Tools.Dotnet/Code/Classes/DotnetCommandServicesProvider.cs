@@ -91,6 +91,11 @@ namespace R5T.Tools.Dotnet
             DotnetCommandServicesProvider.CreateProjectFile(projectType, projectFilePath, DotnetNewConventions.Instance, logger);
         }
 
+        public static void CreateProjectFile(DotnetNewProjectType projectType, ProjectFilePath projectFilePath)
+        {
+            DotnetCommandServicesProvider.CreateProjectFile(projectType, projectFilePath, DummyLogger.Instance);
+        }
+
         public static void AddProjectFileToSolutionFile(SolutionFilePath solutionFilePath, ProjectFilePath projectFilePath, ILogger logger)
         {
             logger.LogDebug($"Adding project file to solution file.\nSolution: {solutionFilePath}\nProject: {projectFilePath}");
@@ -225,6 +230,8 @@ namespace R5T.Tools.Dotnet
 
         private static void ProcessListProjectProjectReferencesOutput(object sender, DataReceivedEventArgs e, ProjectFilePath projectFilePath, List<ProjectFilePath> projectFilePaths)
         {
+            var projectDirectoryPath = PathUtilities.GetDirectoryPath(projectFilePath);
+
             var dataString = e.Data ?? String.Empty;
             using (var reader = new StringReader(dataString))
             {
@@ -236,7 +243,8 @@ namespace R5T.Tools.Dotnet
                     }
 
                     var referencedProjectFileRelativePath = new FileRelativePath(line);
-                    var referenedProjectFilePath = PathUtilities.GetFilePath(projectFilePath, referencedProjectFileRelativePath).AsProjectFilePath();
+                    // Project file relative paths are relative to the project directory path.
+                    var referenedProjectFilePath = PathUtilities.GetFilePath(projectDirectoryPath, referencedProjectFileRelativePath).AsProjectFilePath();
 
                     projectFilePaths.Add(referenedProjectFilePath);
                 }
@@ -246,7 +254,7 @@ namespace R5T.Tools.Dotnet
         /// <summary>
         /// Provides any project file paths referenced by the input project file, and any project file paths referenced by those project file paths, and so on recursively, until all project file paths are accumulated.
         /// </summary>
-        public static ProjectFilePath[] GetProjectReferencedProjectFilePathsRecursive(ProjectFilePath projectFilePath)
+        public static ProjectFilePath[] GetProjectReferencedProjectFilePathsRecursive(ProjectFilePath projectFilePath, ILogger logger)
         {
             var uniqueProjects = new HashSet<ProjectFilePath>();
             var queue = new Queue<ProjectFilePath>();
@@ -257,6 +265,8 @@ namespace R5T.Tools.Dotnet
             while (queue.Count > 0)
             {
                 var currentProjectFilePath = queue.Dequeue();
+
+                logger.LogDebug($"Getting project-references for: {currentProjectFilePath}");
 
                 var currentProjectReferencedProjects = DotnetCommandServicesProvider.GetProjectReferencedProjectFilePaths(currentProjectFilePath);
                 foreach (var referencedProject in currentProjectReferencedProjects)
@@ -274,6 +284,12 @@ namespace R5T.Tools.Dotnet
             projectFilePaths.Sort();
 
             return projectFilePaths.ToArray();
+        }
+
+        public static ProjectFilePath[] GetProjectReferencedProjectFilePathsRecursive(ProjectFilePath projectFilePath)
+        {
+            var projectFilePaths = DotnetCommandServicesProvider.GetProjectReferencedProjectFilePathsRecursive(projectFilePath, DummyLogger.Instance);
+            return projectFilePaths;
         }
 
         ///// Note: currently no need for this capability.
