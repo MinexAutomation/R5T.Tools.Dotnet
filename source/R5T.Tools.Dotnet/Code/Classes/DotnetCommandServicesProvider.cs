@@ -15,7 +15,10 @@ using R5T.Tools.NuGet;
 using R5T.Tools.NuGet.IO;
 using R5T.Tools.NuGet.IO.Extensions;
 
+using NugetUtilities = R5T.Tools.NuGet.Utilities;
+using NugetIoUtilities = R5T.Tools.NuGet.IO.Utilities;
 using PathUtilities = R5T.NetStandard.IO.Paths.Utilities;
+using VsUtilities = R5T.Code.VisualStudio.Utilities;
 
 
 namespace R5T.Tools.Dotnet
@@ -323,28 +326,40 @@ namespace R5T.Tools.Dotnet
             return output;
         }
 
-        public static NupkgFilePath Pack(ProjectFilePath projectFilePath, DirectoryPath outputDirectoryPath, ILogger logger)
+        public static NupkgFilePath Pack(FilePath dotnetExecutableFilePath, ProjectFilePath projectFilePath, DirectoryPath outputDirectoryPath, PackageID packageID, ILogger logger)
         {
-            // Determine the project ID.
             // Determine the project version.
+            var projectVersion = VsUtilities.GetVersion(projectFilePath);
+
+            var packageFileName = NugetIoUtilities.GetNupkgFileName(packageID, projectVersion);
+
             // Determine the .nupkg file-name and file-path (using output directory-path, project ID, project version, and .nupkg file-extension).
-            var packageFilePath = "".AsNupkgFilePath();
+            var packageFilePath = PathUtilities.GetFilePath(outputDirectoryPath, packageFileName).AsNupkgFilePath();
 
             logger.LogDebug($"{projectFilePath} - Packing project to:\n{packageFilePath}");
 
-            var arguments = $@"pack ""{projectFilePath}"" --output ""{outputDirectoryPath}""";
+            var arguments = $@"pack ""{projectFilePath}"" --output ""{outputDirectoryPath}"" -p:PackageID={packageID}";
 
-            ProcessRunner.Run(DotnetCommand.Value, arguments);
+            ProcessRunner.Run(dotnetExecutableFilePath.Value, arguments);
 
             return packageFilePath;
         }
 
-        public static void Pack(ProjectFilePath projectFilePath, NupkgFilePath nupkgFilePath, ILogger logger)
+        public static NupkgFilePath Pack(FilePath dotnetExecutableFilePath, ProjectFilePath projectFilePath, DirectoryPath outputDirectoryPath, ILogger logger)
+        {
+            // Determine the package ID.
+            var packageID = NugetUtilities.GetDefaultPackageID(projectFilePath);
+
+            var packageFilePath = DotnetCommandServicesProvider.Pack(dotnetExecutableFilePath, projectFilePath, outputDirectoryPath, packageID, logger);
+            return packageFilePath;
+        }
+
+        public static void Pack(FilePath dotnetExecutableFilePath, ProjectFilePath projectFilePath, NupkgFilePath nupkgFilePath, ILogger logger)
         {
             var packageDirectoryPath = PathUtilities.GetDirectoryPath(nupkgFilePath);
 
             // Use the pack command to get the package file-path created by dotnet.
-            var defaultPackageFilePath = DotnetCommandServicesProvider.Pack(projectFilePath, packageDirectoryPath, logger);
+            var defaultPackageFilePath = DotnetCommandServicesProvider.Pack(dotnetExecutableFilePath, projectFilePath, packageDirectoryPath, logger);
 
             // If the package file-path created by dotnet is not the same as the specified package file-path, copy the file to the new path.
             if(nupkgFilePath.Value != defaultPackageFilePath.Value)
