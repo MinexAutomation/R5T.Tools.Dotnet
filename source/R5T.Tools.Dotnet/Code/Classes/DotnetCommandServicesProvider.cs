@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Xml;
 
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +12,8 @@ using R5T.NetStandard;
 using R5T.NetStandard.IO.Paths;
 using R5T.NetStandard.OS;
 using R5T.Tools.NuGet;
+using R5T.Tools.NuGet.IO;
+using R5T.Tools.NuGet.IO.Extensions;
 
 using PathUtilities = R5T.NetStandard.IO.Paths.Utilities;
 
@@ -28,7 +31,7 @@ namespace R5T.Tools.Dotnet
 
             var packageArgument = " " + $"package {packageSpecification.ID}";
             var versionArgument = packageSpecification.HasVersion() ? " " + $"--version {packageSpecification.Version}" : String.Empty;
-            var arguments = $"add {projectFilePath}{packageArgument}{versionArgument}";
+            var arguments = $@"add ""{projectFilePath}""{packageArgument}{versionArgument}";
 
             ProcessRunner.Run(DotnetCommand.Value, arguments);
 
@@ -39,7 +42,7 @@ namespace R5T.Tools.Dotnet
         {
             logger.LogDebug($"{projectFilePath} - Adding reference to project file:\n{referenceProjectFilePath}");
 
-            var arguments = $@"add {projectFilePath} reference {referenceProjectFilePath}";
+            var arguments = $@"add ""{projectFilePath}"" reference ""{referenceProjectFilePath}""";
 
             ProcessRunner.Run(DotnetCommand.Value, arguments);
 
@@ -58,7 +61,7 @@ namespace R5T.Tools.Dotnet
             //  --language: This is hard-coded to C#.
             //  --output: This must be the directory in which the solution file should be placed (tested).
             //  --name: This is the name of the solution, to which the .sln extension will be added. If .sln is suffixed to the name argument the resulting solution file will be .sln.sln!
-            var arguments = $@"new {dotnetCommandProjectType} --language ""C#"" --output {projectDirectoryPath} --name {projectName}";
+            var arguments = $@"new {dotnetCommandProjectType} --language ""C#"" --output ""{projectDirectoryPath}"" --name {projectName}";
 
             ProcessRunner.Run(DotnetCommand.Value, arguments);
 
@@ -100,7 +103,7 @@ namespace R5T.Tools.Dotnet
         {
             logger.LogDebug($"Adding project file to solution file.\nSolution: {solutionFilePath}\nProject: {projectFilePath}");
 
-            var arguments = $@"sln {solutionFilePath} add {projectFilePath}";
+            var arguments = $@"sln ""{solutionFilePath}"" add ""{projectFilePath}""";
 
             ProcessRunner.Run(DotnetCommand.Value, arguments);
 
@@ -111,7 +114,7 @@ namespace R5T.Tools.Dotnet
         {
             logger.LogDebug($"Removing project file from solution file.\nSolution: {solutionFilePath}\nProject: {projectFilePath}");
 
-            var arguments = $@"sln {solutionFilePath} remove {projectFilePath}";
+            var arguments = $@"sln ""{solutionFilePath}"" remove ""{projectFilePath}""";
 
             ProcessRunner.Run(DotnetCommand.Value, arguments);
 
@@ -131,7 +134,7 @@ namespace R5T.Tools.Dotnet
             // Notes:
             //  --output: This must be the directory in which the solution file should be placed (tested).
             //  --name: This is the name of the solution, to which the .sln extension will be added. If .sln is suffixed to the name argument the resulting solution file will be .sln.sln!
-            var arguments = $@"new sln --output {solutionDirectoryPath} --name {solutionName}";
+            var arguments = $@"new sln --output ""{solutionDirectoryPath}"" --name {solutionName}";
 
             ProcessRunner.Run(DotnetCommand.Value, arguments);
 
@@ -173,7 +176,7 @@ namespace R5T.Tools.Dotnet
         public static ProjectFilePath[] GetSolutionReferencedProjectFilePaths(SolutionFilePath solutionFilePath)
         {
             // Get all project file paths that are referenced by the solution file path.
-            var arguments = $@"sln {solutionFilePath} list";
+            var arguments = $@"sln ""{solutionFilePath}"" list";
 
             var projectFilePaths = new List<ProjectFilePath>();
 
@@ -212,7 +215,7 @@ namespace R5T.Tools.Dotnet
         public static ProjectFilePath[] GetProjectReferencedProjectFilePaths(ProjectFilePath projectFilePath)
         {
             // Get all project file paths that are referenced by the solution file path.
-            var arguments = $@"list {projectFilePath} reference";
+            var arguments = $@"list ""{projectFilePath}"" reference";
 
             var projectFilePaths = new List<ProjectFilePath>();
 
@@ -292,45 +295,63 @@ namespace R5T.Tools.Dotnet
             return projectFilePaths;
         }
 
-        ///// Note: currently no need for this capability.
-        //public static ProjectFilePath[] GetProjectReferencedPackages(ProjectFilePath projectFilePath)
-        //{
-        //    // Get all project file paths that are referenced by the solution file path.
-        //    var arguments = $@"list {projectFilePath} package";
+        /// Note: currently no need for this capability.
+        public static PackageSpecification[] GetPackageReferences(ProjectFilePath projectFilePath)
+        {
+            var packageSpecifications = new List<PackageSpecification>();
 
-        //    var projectFilePaths = new List<ProjectFilePath>();
+            // dotnet list package output is too complicated to parse, so just go direct to XML.
+            var doc = new XmlDocument();
+            doc.Load(projectFilePath.Value);
 
-        //    var runOptions = new ProcessRunOptions
-        //    {
-        //        Command = Dotnet.Command,
-        //        Arguments = arguments,
-        //        ReceiveOutputData = (sender, e) => DotnetCommandServicesProvider.ProcessListProjectPackageReferencesOutput(sender, e, projectFilePath, projectFilePaths),
-        //    };
+            var nodes = doc.SelectNodes("//Project/ItemGroup/PackageReference");
+            for (int iNode = 0; iNode < nodes.Count; iNode++)
+            {
+                var node = nodes.Item(iNode);
 
-        //    ProcessRunner.Run(runOptions);
+                var includeAttribute = node.Attributes["Include"];
+                var versionAttribute = node.Attributes["Version"];
 
-        //    return projectFilePaths.ToArray();
-        //}
+                var packageID = includeAttribute.Value.AsPackageID();
+                var packageVersion = Version.Parse(versionAttribute.Value);
 
-        //private static void ProcessListProjectPackageReferencesOutput(object sender, DataReceivedEventArgs e, ProjectFilePath projectFilePath, List<ProjectFilePath> projectFilePaths)
-        //{
-        //    var dataString = e.Data ?? String.Empty;
-        //    using (var reader = new StringReader(dataString))
-        //    {
-        //        while (!reader.ReadLineIsEnd(out string line))
-        //        {
-        //            Console.WriteLine(line);
-        //            //if (String.IsNullOrWhiteSpace(line) || line == "Project reference(s)" || line == "--------------------")
-        //            //{
-        //            //    continue;
-        //            //}
+                var packageSpecification = new PackageSpecification(packageID, packageVersion);
+                packageSpecifications.Add(packageSpecification);
+            }
 
-        //            //var referencedProjectFileRelativePath = new FileRelativePath(line);
-        //            //var referenedProjectFilePath = IoUtilities.GetFilePath(projectFilePath, referencedProjectFileRelativePath).ToProjectFilePath();
+            var output = packageSpecifications.ToArray();
+            return output;
+        }
 
-        //            //projectFilePaths.Add(referenedProjectFilePath);
-        //        }
-        //    }
-        //}
+        public static NupkgFilePath Pack(ProjectFilePath projectFilePath, DirectoryPath outputDirectoryPath, ILogger logger)
+        {
+            // Determine the project ID.
+            // Determine the project version.
+            // Determine the .nupkg file-name and file-path (using output directory-path, project ID, project version, and .nupkg file-extension).
+            var packageFilePath = "".AsNupkgFilePath();
+
+            logger.LogDebug($"{projectFilePath} - Packing project to:\n{packageFilePath}");
+
+            var arguments = $@"pack ""{projectFilePath}"" --output ""{outputDirectoryPath}""";
+
+            ProcessRunner.Run(DotnetCommand.Value, arguments);
+
+            return packageFilePath;
+        }
+
+        public static void Pack(ProjectFilePath projectFilePath, NupkgFilePath nupkgFilePath, ILogger logger)
+        {
+            var packageDirectoryPath = PathUtilities.GetDirectoryPath(nupkgFilePath);
+
+            // Use the pack command to get the package file-path created by dotnet.
+            var defaultPackageFilePath = DotnetCommandServicesProvider.Pack(projectFilePath, packageDirectoryPath, logger);
+
+            // If the package file-path created by dotnet is not the same as the specified package file-path, copy the file to the new path.
+            if(nupkgFilePath.Value != defaultPackageFilePath.Value)
+            {
+                File.Copy(defaultPackageFilePath.Value, nupkgFilePath.Value, true);
+                File.Delete(defaultPackageFilePath.Value);
+            }
+        }
     }
 }
