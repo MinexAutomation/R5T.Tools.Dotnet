@@ -10,6 +10,7 @@ using R5T.Code.VisualStudio;
 using R5T.Code.VisualStudio.IO;
 using R5T.NetStandard;
 using R5T.NetStandard.IO.Paths;
+using R5T.NetStandard.Logging;
 using R5T.NetStandard.OS;
 using R5T.Tools.NuGet;
 using R5T.Tools.NuGet.IO;
@@ -18,6 +19,7 @@ using R5T.Tools.NuGet.IO.Extensions;
 using NugetUtilities = R5T.Tools.NuGet.Utilities;
 using NugetIoUtilities = R5T.Tools.NuGet.IO.Utilities;
 using PathUtilities = R5T.NetStandard.IO.Paths.Utilities;
+using PathUtilitiesExtra = R5T.NetStandard.IO.Paths.UtilitiesExtra;
 using VsUtilities = R5T.Code.VisualStudio.Utilities;
 
 
@@ -208,7 +210,7 @@ namespace R5T.Tools.Dotnet
                     }
 
                     var projectFileRelativePath = new FileRelativePath(line);
-                    var projectFilePath = PathUtilities.GetFilePath(solutionFilePath, projectFileRelativePath).AsProjectFilePath();
+                    var projectFilePath = PathUtilitiesExtra.GetFilePath(solutionFilePath, projectFileRelativePath).AsProjectFilePath();
 
                     projectFilePaths.Add(projectFilePath);
                 }
@@ -250,7 +252,7 @@ namespace R5T.Tools.Dotnet
 
                     var referencedProjectFileRelativePath = new FileRelativePath(line);
                     // Project file relative paths are relative to the project directory path.
-                    var referenedProjectFilePath = PathUtilities.GetFilePath(projectDirectoryPath, referencedProjectFileRelativePath).AsProjectFilePath();
+                    var referenedProjectFilePath = PathUtilitiesExtra.GetFilePath(projectDirectoryPath, referencedProjectFileRelativePath).AsProjectFilePath();
 
                     projectFilePaths.Add(referenedProjectFilePath);
                 }
@@ -334,7 +336,7 @@ namespace R5T.Tools.Dotnet
             var packageFileName = NugetIoUtilities.GetNupkgFileName(packageID, projectVersion);
 
             // Determine the .nupkg file-name and file-path (using output directory-path, project ID, project version, and .nupkg file-extension).
-            var packageFilePath = PathUtilities.GetFilePath(outputDirectoryPath, packageFileName).AsNupkgFilePath();
+            var packageFilePath = PathUtilitiesExtra.GetFilePath(outputDirectoryPath, packageFileName).AsNupkgFilePath();
 
             logger.LogDebug($"{projectFilePath} - Packing project to:\n{packageFilePath}");
 
