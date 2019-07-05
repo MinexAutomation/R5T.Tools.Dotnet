@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using R5T.Code.VisualStudio;
 using R5T.Code.VisualStudio.IO;
 using R5T.NetStandard;
+using R5T.NetStandard.IO;
 using R5T.NetStandard.IO.Paths;
 using R5T.NetStandard.Logging;
 using R5T.NetStandard.OS;
