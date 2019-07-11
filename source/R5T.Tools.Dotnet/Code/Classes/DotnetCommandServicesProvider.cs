@@ -348,11 +348,20 @@ namespace R5T.Tools.Dotnet
             {
                 foreach (var source in sources)
                 {
-                    arguments.Append($@" --source ""{source}""");
+                    arguments = arguments.Append($@" --source ""{source}""");
                 }
             }
 
-            ProcessRunner.Run(dotnetExecutableFilePath.Value, arguments);
+            var outputCollector = ProcessRunner.Run(dotnetExecutableFilePath.Value, arguments);
+
+            // Test for success.
+            var lastLine = outputCollector.GetOutputLines().Last().Trim();
+
+            var expectedLastLine = $"Successfully created package '{packageFilePath}'.";
+            if(expectedLastLine != lastLine)
+            {
+                throw new Exception($"dotnet automation error. Command:\n{ ProcessRunner.GetCommandLineIncantation(dotnetExecutableFilePath.Value, arguments) }\n\nOutput:\n{ outputCollector.GetOutputText()}\n\nError:\n{ outputCollector.GetErrorText()}\n");
+            }
 
             logger.LogInformation($"{projectFilePath} - Packed project to:\n{packageFilePath}");
 
